@@ -4,7 +4,7 @@
 use std::process::Command;
 
 #[tauri::command]
-fn run_applescript(script: &str) {
+fn run_script(script: &str) {
     Command::new("osascript")
         .arg("-e")
         .arg(script)
@@ -15,7 +15,7 @@ fn run_applescript(script: &str) {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![run_applescript])
+        .invoke_handler(tauri::generate_handler![run_script])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

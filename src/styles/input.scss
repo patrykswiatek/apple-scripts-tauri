@@ -1,0 +1,12 @@
+.input-element {
+	color: #e0ebeb;
+	border: 0;
+	background: #385170;
+	font-size: 1rem;
+	padding: 0.5rem 1rem;
+	outline: none;
+
+	&::placeholder {
+		color: #142d4c;
+	}
+}

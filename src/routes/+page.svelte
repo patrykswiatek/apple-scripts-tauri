@@ -1,176 +1,168 @@
 <script lang="ts">
-  import ScriptButtons from '../lib/ScriptButtons.svelte';
-  import Button from '../lib/Button.svelte';
-  import { fade } from 'svelte/transition';
-  import { Store } from 'tauri-plugin-store-api';
-  import { onMount } from 'svelte';
-  import { writable } from 'svelte/store';
-  import { invoke } from '@tauri-apps/api/tauri';
+	import { fade } from 'svelte/transition';
+	import { Store } from 'tauri-plugin-store-api';
+	import { onMount } from 'svelte';
+	import { writable } from 'svelte/store';
+	import { invoke } from '@tauri-apps/api/tauri';
 
-  type ButtonData = Record<'key' | 'text' | 'script', string>;
-  type StoreData = { key: string; script: string; text: string };
+	import ButtonsList from '../lib/ButtonsList.svelte';
+	import Button from '../lib/Button.svelte';
+	import TextInput from '../lib/TextInput.svelte';
+	import Textarea from '../lib/Textarea.svelte';
 
-  const buttonStore = writable<ButtonData[] | null>(null);
-  const store = new Store('.config.dat');
+	import { FormValues } from '../enums/form-values.enum';
+	import { MenuType } from '../enums/menu-type.enum';
+	import type { ScriptButton } from '../types/script-button.interface';
 
-  let menu = { annotation: false, form: false };
-  let buttons: ButtonData[] = [];
-  let buttonText = '';
-  let script = '';
-  let selectedButtons: string[] = [];
+	import '../styles/input.scss';
+	import '../styles/shared.scss';
 
-  const closeMenu = () => (menu = { annotation: false, form: false });
+	const scriptStore = writable<ScriptButton[] | null>(null);
+	const store = new Store('.config.dat');
 
-  const toggleMenu = (menuType: 'form' | 'annotation') => {
-    selectedButtons = [];
-    menu = { ...menu, [menuType]: !menu[menuType] };
-  };
+	let buttons: ScriptButton[] = [];
+	let menu: Record<MenuType, boolean> = {
+		[MenuType.AddButton]: false,
+		[MenuType.RemoveButton]: false
+	};
+	let formValues = { [FormValues.Title]: '', [FormValues.Script]: '' };
+	let selectedButtons: string[] = [];
 
-  const removeSelectedButtons = async () => {
-    await Promise.all(selectedButtons.map(async (key) => await store.delete(key)));
-    fetchButtonStoreData();
-    closeMenu();
-    selectedButtons = [];
-  };
+	const closeMenu = () => (menu = { [MenuType.AddButton]: false, [MenuType.RemoveButton]: false });
 
-  const toggleSelectButton = (key: string) => {
-    const index = selectedButtons.indexOf(key);
-    if (index !== -1) selectedButtons.splice(index, 1);
-    else selectedButtons = [...selectedButtons, key];
-  };
+	const toggleMenu = async (type: MenuType) => {
+		selectedButtons = [];
 
-  const handleSubmit = async () => {
-    const uniqueId = crypto.randomUUID();
-    await store.set(uniqueId, { text: buttonText, script });
-    await store.save();
+		const newMenuState = {
+			[type]: !menu[type],
+			[type === MenuType.AddButton ? MenuType.RemoveButton : MenuType.AddButton]: false
+		};
+		menu = { ...menu, ...newMenuState };
+	};
 
-    buttonText = '';
-    script = '';
-    fetchButtonStoreData();
-    closeMenu();
-  };
+	const removeSelectedButtons = async () => {
+		await Promise.all(selectedButtons.map(async (id) => await store.delete(id)));
+		fetchButtonStoreData();
+		closeMenu();
+		selectedButtons = [];
+	};
 
-  const removeAllButtons = async () => {
-    await store.clear();
-    await store.save();
+	const onSelectButton = (id: string) => {
+		if (selectedButtons.includes(id)) {
+			selectedButtons = selectedButtons.filter((buttonId) => buttonId !== id);
+			return;
+		}
 
-    fetchButtonStoreData();
-    closeMenu();
-  };
+		selectedButtons = [...selectedButtons, id];
+	};
 
-  const handleScriptButtonClick = async ({ detail }: CustomEvent<{ button: ButtonData }>) => {
-    const { key, script } = detail.button;
-    if (menu.annotation) toggleSelectButton(key);
-    else await invoke('run_applescript', { script });
-  };
+	const handleSubmit = async () => {
+		const { [FormValues.Title]: title, [FormValues.Script]: script } = formValues;
+		const uniqueId = crypto.randomUUID();
+		await store.set(uniqueId, { text: title, script });
+		await store.save();
 
-  const fetchButtonStoreData = async () => {
-    const entries = (await store.entries()) as [string, StoreData][];
-    buttonStore.set(entries.map(([key, { script, text }]) => ({ key, text, script })));
-  };
+		formValues = { [FormValues.Title]: '', [FormValues.Script]: '' };
+		fetchButtonStoreData();
+		closeMenu();
+	};
 
-  buttonStore.subscribe((values) => (buttons = values || []));
+	const handleScriptButtonClick = async ({ detail }: CustomEvent<{ button: ScriptButton }>) => {
+		const { id, script } = detail.button;
 
-  onMount(fetchButtonStoreData);
+		if (menu[MenuType.RemoveButton]) onSelectButton(id);
+		else await invoke('run_script', { script });
+	};
+
+	const fetchButtonStoreData = async () => {
+		const entries = (await store.entries()) as [string, ScriptButton][];
+		scriptStore.set(entries.map(([id, { script, text }]) => ({ id, text, script })));
+	};
+
+	scriptStore.subscribe((values) => (buttons = values || []));
+
+	onMount(fetchButtonStoreData);
 </script>
 
-
 <div class="container">
-  <div class="buttons">
-    <Button text="Add button" on:click={() => toggleMenu('form')} />
-    <Button
-      text="Remove button"
-      disabled={!buttons?.length}
-      on:click={() => toggleMenu('annotation')}
-    />
-    <Button text="Remove all" disabled={!buttons?.length} on:click={removeAllButtons} />
-  </div>
+	<div class="grid">
+		<Button text="Add button" on:click={() => toggleMenu(MenuType.AddButton)} />
+		<Button
+			text="Remove button"
+			disabled={!buttons?.length}
+			on:click={() => toggleMenu(MenuType.RemoveButton)}
+		/>
+	</div>
 
-  <div>
-    {#if menu.form}
-      <form class="form" on:submit|preventDefault={handleSubmit} in:fade>
-        <input placeholder="Add title" bind:value={buttonText} type="text" />
-        <textarea placeholder="Paste script" bind:value={script} />
-        <Button type="submit" text="Save" />
-      </form>
-    {:else if menu.annotation}
-      <div class="annotation" in:fade>
-        <p>Select buttons to remove</p>
-        {#if !!selectedButtons.length}
-          <Button
-            class="annotation-btn"
-            on:click={removeSelectedButtons}
-            text="Remove selected"
-          />
-        {/if}
-      </div>
-    {/if}
-  </div>
+	{#if menu[MenuType.AddButton]}
+		<form class="menu-add-button" on:submit|preventDefault={handleSubmit} in:fade>
+			<TextInput
+				class="input-element"
+				placeholder="Add title"
+				bind:value={formValues[FormValues.Title]}
+			/>
+			<Textarea
+				class="input-element"
+				placeholder="Paste script"
+				bind:value={formValues[FormValues.Script]}
+			/>
+			<Button
+				type="submit"
+				text="Save"
+				disabled={!formValues[FormValues.Title] || !formValues[FormValues.Script]}
+			/>
+		</form>
+	{:else if menu[MenuType.RemoveButton]}
+		<div class="menu-remove-button grid" in:fade>
+			<p>Select buttons to remove</p>
+			{#if !!selectedButtons.length}
+				<Button on:click={removeSelectedButtons} text="Remove selected" />
+			{/if}
+		</div>
+	{/if}
 
-  <ScriptButtons
-    class="script-buttons"
-    selectable={!!menu.annotation}
-    {buttons}
-    {selectedButtons}
-    on:click={handleScriptButtonClick}
-  />
+	<ButtonsList
+		class="buttons-list"
+		selectable={!!menu[MenuType.RemoveButton]}
+		{buttons}
+		{selectedButtons}
+		on:click={handleScriptButtonClick}
+	/>
 </div>
 
-<style>
-  @import url('htpps://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,700,800,900');
+<style lang="scss">
+	@import url('htpps://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,700,800,900');
 
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    color: white;
-    box-sizing: border-box;
-    font-size: 16px;
-    font-family: 'Poppins', sans-serif;
-    background: #0e1538;
-  }
+	:global(body) {
+		margin: 0;
+		padding: 0;
+		color: #e0ebeb;
+		box-sizing: border-box;
+		font-size: 16px;
+		font-family: 'Poppins', sans-serif;
+		background: #142d4c;
+	}
 
-  .annotation {
-    align-items: baseline;
-    display: grid;
-    grid-auto-flow: column;
-    gap: 0 1rem;
-  }
+	.container {
+		padding: 2rem;
 
-  p,
-  .annotation-btn {
-    margin-top: 2rem;
-  }
+		.menu-add-button {
+			display: grid;
+			gap: 0.5rem 0;
+			margin-top: 2rem;
+		}
 
-  .container {
-    padding: 2rem;
-  }
+		.menu-remove-button {
+			align-items: baseline;
+			margin-top: 2rem;
+		}
+	}
 
-  .container :global(.script-buttons) {
-    margin-top: 2rem;
-    border-width: 1px 0 0 0;
-    border-style: solid;
-    border-color: rgba(105, 12, 227, 0.505);
-    padding: 2rem 0;
-  }
-
-  .buttons {
-    display: grid;
-    grid-auto-flow: column;
-    gap: 0 1rem;
-  }
-
-  form {
-    display: grid;
-    gap: 1rem;
-    margin: 2rem 0;
-  }
-
-  input,
-  textarea {
-    color: white;
-    border: 0;
-    background: rgb(44, 12, 227);
-    font-size: 1rem;
-    padding: 0.5rem 1rem;
-  }
+	.container :global(.buttons-list) {
+		margin-top: 1rem;
+		border-width: 1px 0 0 0;
+		border-style: solid;
+		border-color: #385170;
+		padding: 2rem 0;
+	}
 </style>

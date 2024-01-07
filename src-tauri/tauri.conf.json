@@ -59,7 +59,7 @@
         "height": 600,
         "resizable": true,
         "title": "Run scripts",
-        "width": 800
+        "width": 500
       }
     ]
   }

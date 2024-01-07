@@ -1,38 +1,48 @@
-# create-svelte
+# Tauri + SvelteKit Application - Managing AppleScript
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+## Description
 
-## Creating a project
+The application is used for saving AppleScript scripts in the application memory and later executing them using created buttons. There are two main menu options in the application: adding buttons and removing buttons.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Features
 
+### Adding Buttons
+
+1. **Adding a New Button:**
+    - Users can add a new button by providing a button title and pasting an AppleScript.
+    - After saving changes, a new button is created and appears on the button list below the menu.
+
+2. **Running Scripts:**
+    - Clicking on the created button executes the previously saved AppleScript.
+
+### Removing Buttons
+
+1. **Removing Selected Buttons:**
+    - Users can select buttons they no longer need.
+    - After selecting buttons for removal and confirming the selection, the chosen buttons are removed from the button list.
+
+## Installation and Running
+
+### Requirements
+
+- Node.js
+- npm package manager
+- Rust Compiler (for Tauri handling)
+
+### Step 1: Installation
+
+Install dependencies with:
 ```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+npm install
 ```
 
-## Developing
+### Step 2: Running
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
+Run the development server using:
 ```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
+```
+or start the server and open the app in a new browser tab:
+```bash
 npm run dev -- --open
 ```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
