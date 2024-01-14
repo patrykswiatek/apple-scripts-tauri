@@ -40,9 +40,12 @@ npm install
 
 Run the development server using:
 ```bash
-npm run dev
+npm run tauri dev
 ```
-or start the server and open the app in a new browser tab:
+
+### Step 3: Build
+
+Build the app:
 ```bash
-npm run dev -- --open
+npm run tauri build
 ```
